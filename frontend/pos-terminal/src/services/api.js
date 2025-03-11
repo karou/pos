@@ -1,11 +1,21 @@
 import axios from 'axios';
 import { getStoredAuthToken, clearAuthToken } from '../utils/auth';
 import { saveOfflineRequest } from './offline';
+import mockAPI from './mockApi';
+import config from '../config';
+
+// Determine if we should use mock data as fallback
+// Use mock data only if explicitly enabled via env var, AND in development mode
+const USE_MOCK_API = process.env.NODE_ENV === 'development' && 
+                     process.env.REACT_APP_USE_MOCK_API === 'true';
+
+// Track pending requests to prevent duplicates during rate limiting
+const pendingRequests = new Map();
 
 // Create axios instance with defaults
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || '/api',
-  timeout: 10000,
+  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3000',
+  timeout: parseInt(process.env.REACT_APP_API_TIMEOUT, 10) || 10000,
   headers: {
     'Content-Type': 'application/json'
   }
@@ -19,6 +29,30 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
+
+    // Create a unique key for this request
+    const requestKey = `${config.method}:${config.url}${JSON.stringify(config.params || {})}`;
+    
+    // Check if we have a pending request for this exact URL and params
+    if (pendingRequests.has(requestKey)) {
+      // Return a canceled request to prevent duplication during rate limiting
+      const source = axios.CancelToken.source();
+      config.cancelToken = source.token;
+      source.cancel('Duplicate request during rate limiting');
+    }
+    
+    // Mark this request as pending
+    pendingRequests.set(requestKey, true);
+    
+    // Add cleanup when request is complete
+    const originalCompleteHandler = config.complete;
+    config.complete = function() {
+      pendingRequests.delete(requestKey);
+      if (originalCompleteHandler) {
+        originalCompleteHandler();
+      }
+    };
+    
     return config;
   },
   (error) => Promise.reject(error)
@@ -26,8 +60,77 @@ api.interceptors.request.use(
 
 // Response interceptor
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Clear pending request marker
+    const requestKey = `${response.config.method}:${response.config.url}${JSON.stringify(response.config.params || {})}`;
+    pendingRequests.delete(requestKey);
+    
+    return response;
+  },
   async (error) => {
+    // Clear pending request marker
+    if (error.config) {
+      const requestKey = `${error.config.method}:${error.config.url}${JSON.stringify(error.config.params || {})}`;
+      pendingRequests.delete(requestKey);
+    }
+    
+    // Handle rate limiting (429 Too Many Requests)
+    if (error.response && error.response.status === 429) {
+      const retryAfter = error.response.headers['retry-after'] || 2; // Default to 2 seconds if not provided
+      console.log(`Rate limited. Retrying after ${retryAfter} seconds...`);
+      
+      // Use mock data immediately if available and configured
+      if (USE_MOCK_API) {
+        const mockEndpoint = Object.keys(mockAPI).find(endpoint => 
+          error.config.url.includes(endpoint)
+        );
+        
+        if (mockEndpoint) {
+          console.log(`Using mock data for ${error.config.url} (rate limited)`);
+          const mockData = error.config.method.toLowerCase() === 'post'
+            ? mockAPI[mockEndpoint](JSON.parse(error.config.data || '{}'))
+            : mockAPI[mockEndpoint]();
+            
+          return mockData;
+        }
+      }
+      
+      // Otherwise, for important requests, we can implement retry with exponential backoff
+      // This is disabled by default to prevent overwhelming the server
+      if (error.config._retry !== true && error.config.important === true) {
+        error.config._retry = true;
+        
+        // Wait before retrying (using the Retry-After header value)
+        await new Promise(resolve => setTimeout(resolve, retryAfter * 1000));
+        
+        // Retry the request
+        return api(error.config);
+      }
+      
+      // Return a friendly error message for rate limiting
+      return Promise.reject({
+        isRateLimited: true,
+        message: 'Too many requests. Please try again in a few moments.',
+        retryAfter
+      });
+    }
+    
+    // Check if we should use mock API and if the URL matches a mock endpoint
+    if (USE_MOCK_API && (error.response?.status === 404 || !error.response)) {
+      const mockEndpoint = Object.keys(mockAPI).find(endpoint => 
+        error.config.url.includes(endpoint)
+      );
+      
+      if (mockEndpoint) {
+        console.log(`Using mock data for ${error.config.url}`);
+        const mockData = error.config.method.toLowerCase() === 'post'
+          ? mockAPI[mockEndpoint](JSON.parse(error.config.data || '{}'))
+          : mockAPI[mockEndpoint]();
+          
+        return mockData;
+      }
+    }
+    
     // Handle network errors
     if (!error.response) {
       console.log('Network error detected, saving request for offline processing');
@@ -75,65 +178,76 @@ api.interceptors.response.use(
       
       // Redirect to login page
       window.location.href = '/login';
+      return Promise.reject(error);
     }
     
     return Promise.reject(error);
   }
 );
 
+// Helper to check if the app is in development mode with mock API enabled
+export const isMockMode = () => USE_MOCK_API;
+
 // API endpoints
 // Authentication
 export const authAPI = {
-  login: (credentials) => api.post('/auth/login', credentials),
-  logout: () => api.post('/auth/logout'),
-  getProfile: () => api.get('/auth/profile')
+  login: (credentials) => api.post('/api/auth/login', credentials),
+  logout: () => api.post('/api/auth/logout'),
+  getProfile: () => api.get('/api/auth/profile')
 };
 
 // Products
 export const productsAPI = {
-  getAllProducts: () => api.get('/products'),
-  getProductsByCategory: (categoryId) => api.get(`/products/category/${categoryId}`),
-  getProduct: (id) => api.get(`/products/${id}`),
+  getAllProducts: () => api.get('/api/products'),
+  getCategories: () => api.get('/api/products/categories'),
+  getProductsByCategory: (categoryId) => api.get(`/api/products/category/${categoryId}`),
+  getProduct: (id) => api.get(`/api/products/${id}`),
   calculatePrice: (productId, variations, toppings) => 
-    api.post('/products/calculate-price', { productId, variations, toppings })
+    api.post('/api/products/calculate-price', { productId, variations, toppings })
 };
 
 // Orders
 export const ordersAPI = {
-  createOrder: (orderData) => api.post('/orders', orderData),
-  getOrders: (params) => api.get('/orders', { params }),
-  getOrder: (id) => api.get(`/orders/${id}`),
+  createOrder: (orderData) => api.post('/api/orders', orderData, { important: true }), // Mark as important
+  getOrders: (params) => api.get('/api/orders', { params }),
+  getOrder: (id) => api.get(`/api/orders/${id}`),
   updateOrderStatus: (id, status, note) => 
-    api.patch(`/orders/${id}/status`, { status, note }),
-  processSyncedOrders: (orders) => api.post('/orders/sync-offline', { orders })
+    api.patch(`/api/orders/${id}/status`, { status, note }, { important: true }),
+  processSyncedOrders: (orders) => api.post('/api/orders/sync', { orders }, { important: true })
 };
 
 // Inventory
 export const inventoryAPI = {
-  getInventory: (params) => api.get('/inventory', { params }),
+  getInventory: (params) => api.get('/api/inventory', { params }),
   updateInventory: (itemId, quantity, type, reason) => 
-    api.post('/inventory/update', { itemId, quantity, type, reason })
+    api.post('/api/inventory/update', { itemId, quantity, type, reason }, { important: true })
 };
 
 // Payments
 export const paymentsAPI = {
-  processPayment: (paymentData) => api.post('/payments', paymentData),
-  getPayment: (id) => api.get(`/payments/${id}`)
+  processPayment: (paymentData) => api.post('/api/payments', paymentData, { important: true }),
+  getPayment: (id) => api.get(`/api/payments/${id}`)
 };
 
 // Stores
 export const storesAPI = {
-  getStores: () => api.get('/stores'),
-  getStore: (id) => api.get(`/stores/${id}`)
+  getStores: () => api.get('/api/stores'),
+  getStore: (id) => api.get(`/api/stores/${id}`)
 };
 
 // Sync
 export const syncAPI = {
-  startSyncSession: (data) => api.post('/sync/start', data),
-  updateSyncProgress: (sessionId, data) => api.patch(`/sync/${sessionId}/progress`, data),
-  completeSyncSession: (sessionId, data) => api.post(`/sync/${sessionId}/complete`, data),
-  resolveConflicts: (data) => api.post('/sync/resolve-conflicts', data),
-  getSyncHistory: (params) => api.get('/sync/history', { params })
+  startSyncSession: (data) => api.post('/api/sync/start', data),
+  updateSyncProgress: (sessionId, data) => api.patch(`/api/sync/${sessionId}/progress`, data),
+  completeSyncSession: (sessionId, data) => api.post(`/api/sync/${sessionId}/complete`, data),
+  resolveConflicts: (data) => api.post('/api/sync/resolve-conflicts', data),
+  getSyncHistory: (params) => api.get('/api/sync/history', { params })
+};
+
+// Notifications
+export const notificationsAPI = {
+  getNotifications: () => api.get('/api/notifications'),
+  markAsRead: (id) => api.post(`/api/notifications/${id}/read`)
 };
 
 export default api;

@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { useCart } from '../../context/CartContext';
 import PaymentForm from './PaymentForm';
 import { ordersAPI } from '../../services/api';
-import { useOfflineSync } from '../../hooks/useOfflineSync';
+import useOfflineSync from '../../hooks/useOfflineSync';
 
 /**
  * Checkout panel for finalizing orders

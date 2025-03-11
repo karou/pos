@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useOfflineSync } from '../hooks/useOfflineSync';
+import useOfflineSync from '../hooks/useOfflineSync';
 import Notification from '../components/common/Notification';
 import '../styles/Layout.css';
 

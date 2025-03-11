@@ -1,0 +1,213 @@
+/* POS Terminal styles */
+
+.pos-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background-color: #f8f9fa;
+  }
+  
+  .pos-content {
+    display: flex;
+    flex: 1;
+    height: calc(100vh - 70px);
+    overflow: hidden;
+  }
+  
+  .products-section {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    overflow-y: auto;
+  }
+  
+  .cart-section {
+    flex: 1;
+    min-width: 350px;
+    max-width: 450px;
+    background-color: white;
+    border-left: 1px solid #e9ecef;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .products-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+  
+  .products-header h2 {
+    margin: 0;
+    font-size: 1.5rem;
+    font-weight: 600;
+  }
+  
+  .products-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  
+  .offline-indicator {
+    display: inline-block;
+    padding: 0.25rem 0.5rem;
+    background-color: #e74c3c;
+    color: white;
+    font-size: 0.8rem;
+    border-radius: 4px;
+  }
+  
+  /* Loading container */
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    text-align: center;
+    color: #6c757d;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    margin: 1rem 0;
+  }
+  
+  /* Error message display */
+  .error-message {
+    background-color: #f8d7da;
+    color: #721c24;
+    padding: 1rem;
+    border-radius: 4px;
+    margin: 1rem 0;
+    text-align: center;
+  }
+  
+  .error-message button {
+    margin-top: 0.75rem;
+  }
+  
+  /* Page loader */
+  .page-loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+    text-align: center;
+    color: #4a6cfa;
+  }
+  
+  /* Dark theme overrides */
+  .dark-theme .pos-container {
+    background-color: #1a1a1a;
+    color: #e9ecef;
+  }
+  
+  .dark-theme .products-header h2 {
+    color: #e9ecef;
+  }
+  
+  .dark-theme .cart-section {
+    background-color: #222;
+    border-left: 1px solid #333;
+  }
+  
+  .dark-theme .loading-container {
+    background-color: #222;
+    color: #adb5bd;
+  }
+  
+  .dark-theme .error-message {
+    background-color: #2d1a1c;
+    color: #f8d7da;
+  }
+  
+  .dark-theme .category-item {
+    background-color: #333;
+    border-color: #444;
+    color: #e9ecef;
+  }
+  
+  .dark-theme .category-item:hover {
+    background-color: #444;
+  }
+  
+  .dark-theme .category-item.active {
+    background-color: #4a6cfa;
+    color: white;
+  }
+  
+  .dark-theme .product-search input {
+    background-color: #333;
+    border-color: #444;
+    color: #e9ecef;
+  }
+  
+  .dark-theme .product-search input::placeholder {
+    color: #adb5bd;
+  }
+  
+  .dark-theme .product-card {
+    background-color: #222;
+    border-color: #333;
+    color: #e9ecef;
+  }
+  
+  .dark-theme .product-card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  }
+  
+  .dark-theme .product-name {
+    color: #e9ecef;
+  }
+  
+  .dark-theme .product-category {
+    color: #adb5bd;
+  }
+  
+  /* Responsive adjustments */
+  @media (max-width: 1200px) {
+    .pos-content {
+      flex-direction: column;
+      height: auto;
+    }
+    
+    .products-section {
+      flex: none;
+      height: auto;
+      max-height: 60vh;
+    }
+    
+    .cart-section {
+      flex: none;
+      max-width: none;
+      width: 100%;
+      border-left: none;
+      border-top: 1px solid #e9ecef;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .products-section {
+      padding: 1rem;
+    }
+    
+    .products-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+    
+    .products-actions {
+      width: 100%;
+      justify-content: space-between;
+    }
+    
+    .product-grid {
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+  }

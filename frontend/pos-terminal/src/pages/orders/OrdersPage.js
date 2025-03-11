@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useOfflineSync } from '../../hooks/useOfflineSync';
+import useOfflineSync from '../../hooks/useOfflineSync';
 import { getOfflineOrders } from '../../services/offline';
 import { ordersAPI } from '../../services/api';
 import { formatDate, formatTime, formatCurrency } from '../../utils/formatters';

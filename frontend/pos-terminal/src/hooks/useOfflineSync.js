@@ -1,5 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
-import { syncData } from '../services/sync';
+import { getOfflineOrders, removeOfflineOrder } from '../services/offline';
+import { syncOfflineOrders } from '../services/orders';
+import api from '../services/api';
+import config from '../config';
 
 /**
  * Custom hook for managing offline functionality and data synchronization
@@ -21,8 +24,8 @@ const useOfflineSync = () => {
     const handleOnline = () => {
       console.log('App is online');
       setIsOnline(true);
-      // Auto-sync when coming back online
-      if (pendingSyncCount > 0) {
+      // Auto-sync when coming back online if enabled
+      if (config.offline.syncOnConnection && pendingSyncCount > 0) {
         sync();
       }
     };
@@ -46,40 +49,29 @@ const useOfflineSync = () => {
     };
   }, [pendingSyncCount]);
   
+  // Auto-sync at intervals if enabled
+  useEffect(() => {
+    let intervalId;
+    
+    if (config.offline.autoSyncInterval > 0 && isOnline && pendingSyncCount > 0) {
+      intervalId = setInterval(() => {
+        sync();
+      }, config.offline.autoSyncInterval * 60 * 1000); // Convert minutes to milliseconds
+    }
+    
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [isOnline, pendingSyncCount]);
+  
   // Check IndexedDB for pending sync items
   const checkPendingSyncItems = useCallback(async () => {
     try {
-      // Open IndexedDB
-      const dbPromise = indexedDB.open('PosOfflineDB', 1);
-      
-      dbPromise.onsuccess = (event) => {
-        const db = event.target.result;
-        
-        // Check if the object store exists
-        if (!db.objectStoreNames.contains('pendingRequests')) {
-          setPendingSyncCount(0);
-          return;
-        }
-        
-        const transaction = db.transaction('pendingRequests', 'readonly');
-        const store = transaction.objectStore('pendingRequests');
-        
-        // Count number of items
-        const countRequest = store.count();
-        
-        countRequest.onsuccess = () => {
-          setPendingSyncCount(countRequest.result);
-        };
-        
-        transaction.oncomplete = () => {
-          db.close();
-        };
-      };
-      
-      dbPromise.onerror = (error) => {
-        console.error('Error opening IndexedDB:', error);
-        setPendingSyncCount(0);
-      };
+      // Get count of offline orders
+      const offlineOrders = await getOfflineOrders();
+      setPendingSyncCount(offlineOrders.length);
     } catch (error) {
       console.error('Error checking pending sync items:', error);
       setPendingSyncCount(0);
@@ -88,29 +80,36 @@ const useOfflineSync = () => {
   
   // Sync data with the server
   const sync = useCallback(async () => {
-    if (!isOnline || isSyncing) return;
+    if (!isOnline || isSyncing) return { success: false, message: 'Cannot sync while offline or already syncing' };
     
     try {
       setIsSyncing(true);
       
-      // Perform sync operation
-      const syncResult = await syncData();
+      // Sync offline orders
+      const result = await syncOfflineOrders();
       
-      // Update last sync time
-      const now = new Date();
-      setLastSyncTime(now);
-      localStorage.setItem('lastSyncTime', now.toISOString());
-      
-      // Recheck pending items
-      await checkPendingSyncItems();
+      // Check if sync was successful
+      if (result.success) {
+        // Update last sync time
+        const now = new Date();
+        setLastSyncTime(now);
+        localStorage.setItem('lastSyncTime', now.toISOString());
+        
+        // Recheck pending items
+        await checkPendingSyncItems();
+      }
       
       setIsSyncing(false);
       
-      return syncResult;
+      return result;
     } catch (error) {
       console.error('Sync error:', error);
       setIsSyncing(false);
-      throw error;
+      
+      return {
+        success: false,
+        error: error.message || 'Unknown error during sync'
+      };
     }
   }, [isOnline, isSyncing, checkPendingSyncItems]);
   
@@ -130,13 +129,20 @@ const useOfflineSync = () => {
     }
   }, []);
   
+  // Check if application can work offline
+  const canWorkOffline = useCallback(() => {
+    return config.offline.enabled;
+  }, []);
+  
   return {
     isOnline,
     isSyncing,
     lastSyncTime,
     pendingSyncCount,
     sync,
-    registerBackgroundSync
+    registerBackgroundSync,
+    checkPendingSyncItems,
+    canWorkOffline
   };
 };
 
