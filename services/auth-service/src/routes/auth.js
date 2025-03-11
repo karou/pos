@@ -16,6 +16,9 @@ router.post('/logout', authController.logout);
 router.get('/profile', authController.getProfile);
 
 // Refresh token route
-router.post('/refresh-token', authController.refreshToken);
+router.post('/refresh-token', authController.refreshToken); 
+
+// Token validation route
+router.get('/validate', authController.validateToken);
 
 module.exports = router;

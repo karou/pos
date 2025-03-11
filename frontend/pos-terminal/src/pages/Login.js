@@ -5,7 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import '../styles/Login.css';
 
 const Login = () => {
-  const [credentials, setCredentials] = useState({ username: '', password: '' });
+  const [credentials, setCredentials] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
   const { login, user } = useAuth();
   const navigate = useNavigate();
@@ -61,15 +61,15 @@ const Login = () => {
           {error && <div className="error-message">{error}</div>}
           
           <div className="form-group">
-            <label htmlFor="username">Username</label>
+            <label htmlFor="email">Email</label>
             <input
               type="text"
-              id="username"
-              name="username"
-              value={credentials.username}
+              id="email"
+              name="email"
+              value={credentials.email}
               onChange={handleChange}
-              placeholder="Enter your username"
-              autoComplete="username"
+              placeholder="Enter your email"
+              autoComplete="email"
             />
           </div>
           

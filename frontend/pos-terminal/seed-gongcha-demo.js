@@ -8,6 +8,7 @@
  */
 
 const { MongoClient, ObjectId } = require('mongodb');
+const bcrypt = require('bcryptjs');
 
 // Connection URL and Database Name
 const url = process.env.MONGODB_URI || 'mongodb://localhost:27017';
@@ -27,25 +28,25 @@ async function seedDatabase() {
     await clearCollections(db);
     
     // Seed stores
-    const storeIds = await seedStores(db);
+    const storeIds = await seedStores(client.db('pos_stores'));
     
     // Seed users
-    const userIds = await seedUsers(db, storeIds);
+    const userIds = await seedUsers(client.db('pos_auth'), storeIds);
     
     // Seed categories
-    const categoryIds = await seedCategories(db);
+    const categoryIds = await seedCategories(client.db('pos_products'));
     
     // Seed variations
-    const variations = await seedVariations(db);
+    const variations = await seedVariations(client.db('pos_products'));
     
     // Seed toppings
-    const toppings = await seedToppings(db);
+    const toppings = await seedToppings(client.db('pos_products'));
     
     // Seed products
-    const productIds = await seedProducts(db, categoryIds, variations, toppings);
+    const productIds = await seedProducts(client.db('pos_products'), categoryIds, variations, toppings, client.db('pos_inventory'));
     
     // Seed orders
-    await seedOrders(db, storeIds, userIds, productIds);
+    await seedOrders(client.db('pos_orders'), storeIds, userIds, productIds, client.db('pos_products'));
     
     console.log('Database seeded successfully!');
   } catch (err) {
@@ -72,44 +73,57 @@ async function clearCollections(db) {
 
 // Seed store data
 async function seedStores(db) {
+  db.dropDatabase();
   console.log('Seeding stores...');
   
   const stores = [
     {
       name: 'Gong Cha Downtown',
-      address: '123 Main Street',
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10001',
-      phone: '212-555-1234',
-      email: 'downtown@gongcha.example.com',
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      code: "GCD",
+      address: { 
+        street: '123 Main Street',
+        city: 'New York',
+        state: 'NY',
+        zipCode: '10001',
+        country: "USA"
+      },
+      contact: {
+        phone: '212-555-1234',
+        email: 'downtown@gongcha.example.com',
+      },
+      active: true
     },
     {
       name: 'Gong Cha Midtown',
-      address: '456 Park Avenue',
-      city: 'New York',
-      state: 'NY',
-      zipCode: '10022',
-      phone: '212-555-5678',
-      email: 'midtown@gongcha.example.com',
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      code: "GCM",
+      address: { 
+        street: '456 Park Avenue',
+        city: 'New York',
+        state: 'NY',
+        zipCode: '10022',
+        country: "USA"
+      },
+      contact: {
+        phone: '212-555-5678',
+        email: 'midtown@gongcha.example.com',
+      },
+      active: true
     },
     {
       name: 'Gong Cha Brooklyn',
-      address: '789 Bedford Avenue',
-      city: 'Brooklyn',
-      state: 'NY',
-      zipCode: '11211',
-      phone: '718-555-9012',
-      email: 'brooklyn@gongcha.example.com',
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      code: "GCB",
+      address: { 
+        street: '789 Bedford Avenue',
+        city: 'Brooklyn',
+        state: 'NY',
+        zipCode: '11211',
+        country: "USA"
+      },
+      contact: {
+        phone: '718-555-9012',
+        email: 'brooklyn@gongcha.example.com',
+      },
+      active: true
     }
   ];
   
@@ -119,60 +133,59 @@ async function seedStores(db) {
   return Object.values(result.insertedIds);
 }
 
+
 // Seed user data
 async function seedUsers(db, storeIds) {
+  db.dropDatabase();
   console.log('Seeding users...');
+  const salt = await bcrypt.genSalt(10);
+  const hashedPassword = await bcrypt.hash('password123', salt);
   
   const users = [
     {
       name: 'Admin User',
       email: 'admin@gongcha.example.com',
-      password: '$2a$10$XQCuZrEBPbjsn1HElpWxBeZ1.GJEBuLEABzLZR7wn2PabRYKdlJC.', // hashed 'password123'
+      password: hashedPassword, // hashed 'password123'
       role: 'admin',
       store: storeIds[0],
       isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: new Date()
     },
     {
       name: 'Manager User',
       email: 'manager@gongcha.example.com',
-      password: '$2a$10$XQCuZrEBPbjsn1HElpWxBeZ1.GJEBuLEABzLZR7wn2PabRYKdlJC.',
+      password: hashedPassword,
       role: 'manager',
       store: storeIds[0],
       isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: new Date()
     },
     {
       name: 'Cashier 1',
       email: 'cashier1@gongcha.example.com',
-      password: '$2a$10$XQCuZrEBPbjsn1HElpWxBeZ1.GJEBuLEABzLZR7wn2PabRYKdlJC.',
+      password: hashedPassword,
       role: 'cashier',
       store: storeIds[0],
       isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: new Date()
     },
     {
       name: 'Cashier 2',
       email: 'cashier2@gongcha.example.com',
-      password: '$2a$10$XQCuZrEBPbjsn1HElpWxBeZ1.GJEBuLEABzLZR7wn2PabRYKdlJC.',
+      password: hashedPassword,
       role: 'cashier',
       store: storeIds[1],
       isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: new Date()
     },
     {
       name: 'Brooklyn Manager',
       email: 'brooklyn.manager@gongcha.example.com',
-      password: '$2a$10$XQCuZrEBPbjsn1HElpWxBeZ1.GJEBuLEABzLZR7wn2PabRYKdlJC.',
+      password: hashedPassword,
       role: 'manager',
       store: storeIds[2],
       isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      createdAt: new Date()
     }
   ];
   
@@ -184,6 +197,7 @@ async function seedUsers(db, storeIds) {
 
 // Seed category data
 async function seedCategories(db) {
+  db.dropDatabase();
   console.log('Seeding categories...');
   
   const categories = [
@@ -404,7 +418,8 @@ async function seedToppings(db) {
 }
 
 // Seed product data
-async function seedProducts(db, categoryIds, variations, toppings) {
+async function seedProducts(db, categoryIds, variations, toppings, db_inventory) {
+  db_inventory.dropDatabase();
   console.log('Seeding products...');
   
   // Create array of just the topping IDs
@@ -420,9 +435,7 @@ async function seedProducts(db, categoryIds, variations, toppings) {
       variations: ['size', 'sugar', 'ice'],
       toppings: toppingIds,
       isPopular: true,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      available: true
     },
     {
       name: 'Earl Grey Milk Tea',
@@ -433,9 +446,7 @@ async function seedProducts(db, categoryIds, variations, toppings) {
       variations: ['size', 'sugar', 'ice'],
       toppings: toppingIds,
       isPopular: false,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      available: true
     },
     {
       name: 'Taro Milk Tea',
@@ -446,9 +457,7 @@ async function seedProducts(db, categoryIds, variations, toppings) {
       variations: ['size', 'sugar', 'ice'],
       toppings: toppingIds,
       isPopular: true,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      available: true
     },
     {
       name: 'Wintermelon Milk Tea',
@@ -459,9 +468,7 @@ async function seedProducts(db, categoryIds, variations, toppings) {
       variations: ['size', 'sugar', 'ice'],
       toppings: toppingIds,
       isPopular: false,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      available: true
     },
     {
       name: 'Brown Sugar Milk Tea',
@@ -472,9 +479,7 @@ async function seedProducts(db, categoryIds, variations, toppings) {
       variations: ['size', 'sugar', 'ice'],
       toppings: toppingIds,
       isPopular: true,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      available: true
     },
     {
       name: 'Mango Green Tea',
@@ -485,9 +490,7 @@ async function seedProducts(db, categoryIds, variations, toppings) {
       variations: ['size', 'sugar', 'ice'],
       toppings: toppingIds,
       isPopular: true,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      available: true
     },
     {
       name: 'Passion Fruit Green Tea',
@@ -498,9 +501,7 @@ async function seedProducts(db, categoryIds, variations, toppings) {
       variations: ['size', 'sugar', 'ice'],
       toppings: toppingIds,
       isPopular: false,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      available: true
     },
     {
       name: 'Lychee Oolong Tea',
@@ -511,9 +512,7 @@ async function seedProducts(db, categoryIds, variations, toppings) {
       variations: ['size', 'sugar', 'ice'],
       toppings: toppingIds,
       isPopular: false,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      available: true
     },
     {
       name: 'Strawberry Green Tea',
@@ -524,9 +523,7 @@ async function seedProducts(db, categoryIds, variations, toppings) {
       variations: ['size', 'sugar', 'ice'],
       toppings: toppingIds,
       isPopular: false,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      available: true
     },
     {
       name: 'Peach Green Tea',
@@ -537,9 +534,7 @@ async function seedProducts(db, categoryIds, variations, toppings) {
       variations: ['size', 'sugar', 'ice'],
       toppings: toppingIds,
       isPopular: true,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      available: true
     },
     {
       name: 'Mango Slush',
@@ -550,9 +545,7 @@ async function seedProducts(db, categoryIds, variations, toppings) {
       variations: ['size', 'sugar'],
       toppings: toppingIds,
       isPopular: true,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      available: true
     },
     {
       name: 'Taro Slush',
@@ -563,9 +556,7 @@ async function seedProducts(db, categoryIds, variations, toppings) {
       variations: ['size', 'sugar'],
       toppings: toppingIds,
       isPopular: false,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      available: true
     },
     {
       name: 'Gong Cha Coffee',
@@ -576,9 +567,7 @@ async function seedProducts(db, categoryIds, variations, toppings) {
       variations: ['size', 'sugar', 'ice', 'milkFoam'],
       toppings: toppingIds.filter(id => id !== 'milkFoam'), // Remove milk foam from toppings since it's a variation
       isPopular: false,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      available: true
     },
     {
       name: 'Milk Coffee',
@@ -589,9 +578,7 @@ async function seedProducts(db, categoryIds, variations, toppings) {
       variations: ['size', 'sugar', 'ice', 'milkFoam'],
       toppings: toppingIds.filter(id => id !== 'milkFoam'),
       isPopular: true,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      available: true
     },
     {
       name: 'Brown Sugar Dirty Milk',
@@ -602,9 +589,7 @@ async function seedProducts(db, categoryIds, variations, toppings) {
       variations: ['size', 'sugar', 'ice'],
       toppings: toppingIds,
       isPopular: true,
-      isActive: true,
-      createdAt: new Date(),
-      updatedAt: new Date()
+      available: true
     }
   ];
   
@@ -612,7 +597,7 @@ async function seedProducts(db, categoryIds, variations, toppings) {
   console.log(`${result.insertedCount} products inserted`);
   
   // Seed inventory for each product
-  await seedInventory(db, result.insertedIds);
+  await seedInventory(db_inventory, result.insertedIds);
   
   return Object.values(result.insertedIds);
 }
@@ -646,14 +631,16 @@ function getRandomDate() {
 }
 
 // Seed order data
-async function seedOrders(db, storeIds, userIds, productIds) {
+async function seedOrders(db, storeIds, userIds, productIds, db_products) {
+  db.dropDatabase();
   console.log('Seeding orders...');
   
   const orders = [];
   const orderCount = 200; // Create 200 sample orders
   
   // Get all products for reference
-  const products = await db.collection('products').find({}).toArray();
+  const products = await db_products.collection('products').find({}).toArray();
+  console.log(products);
   
   // Create sample orders
   for (let i = 0; i < orderCount; i++) {
@@ -666,7 +653,7 @@ async function seedOrders(db, storeIds, userIds, productIds) {
     for (let j = 0; j < itemCount; j++) {
       // Pick a random product
       const product = products[Math.floor(Math.random() * products.length)];
-      
+      console.log(product);
       // Generate random variations
       const variations = [];
       if (product.variations.includes('size')) {
