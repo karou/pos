@@ -1,0 +1,348 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  api-gateway:
+    build: 
+      context: ./api-gateway
+      dockerfile: Dockerfile
+    container_name: pos-api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - PRODUCT_SERVICE_URL=http://product-service:3002
+      - INVENTORY_SERVICE_URL=http://inventory-service:3003
+      - ORDER_SERVICE_URL=http://order-service:3004
+      - PAYMENT_SERVICE_URL=http://payment-service:3005
+      - STORE_SERVICE_URL=http://store-service:3006
+      - SYNC_SERVICE_URL=http://sync-service:3007
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3008
+      - REDIS_URL=redis://redis:6379
+    env_file:
+      - .env
+    depends_on:
+      - auth-service
+      - product-service
+      - inventory-service
+      - order-service
+      - payment-service
+      - store-service
+      - sync-service
+      - notification-service
+      - redis
+    networks:
+      - pos-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # Frontend Applications
+  pos-terminal:
+    build: 
+      context: ./frontend/pos-terminal
+      dockerfile: Dockerfile
+    container_name: pos-terminal
+    ports:
+      - "3100:80"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - pos-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+
+  admin-dashboard:
+    build: 
+      context: ./frontend/admin-dashboard
+      dockerfile: Dockerfile
+    container_name: pos-admin-dashboard
+    ports:
+      - "3200:80"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - pos-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+
+  # Microservices
+  auth-service:
+    build: 
+      context: ./services/auth-service
+      dockerfile: Dockerfile
+    container_name: pos-auth-service
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - MONGO_URI=mongodb://mongodb:27017/pos_auth
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_EXCHANGE=pos_events
+      - REDIS_URL=redis://redis:6379
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+      - rabbitmq
+      - redis
+    networks:
+      - pos-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+
+  product-service:
+    build: 
+      context: ./services/product-service
+      dockerfile: Dockerfile
+    container_name: pos-product-service
+    environment:
+      - NODE_ENV=production
+      - PORT=3002
+      - MONGO_URI=mongodb://mongodb:27017/pos_products
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_EXCHANGE=pos_events
+      - REDIS_URL=redis://redis:6379
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+      - rabbitmq
+      - redis
+    networks:
+      - pos-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+
+  inventory-service:
+    build: 
+      context: ./services/inventory-service
+      dockerfile: Dockerfile
+    container_name: pos-inventory-service
+    environment:
+      - NODE_ENV=production
+      - PORT=3003
+      - MONGO_URI=mongodb://mongodb:27017/pos_inventory
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_EXCHANGE=pos_events
+      - REDIS_URL=redis://redis:6379
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+      - rabbitmq
+      - redis
+    networks:
+      - pos-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+
+  order-service:
+    build: 
+      context: ./services/order-service
+      dockerfile: Dockerfile
+    container_name: pos-order-service
+    environment:
+      - NODE_ENV=production
+      - PORT=3004
+      - MONGO_URI=mongodb://mongodb:27017/pos_orders
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_EXCHANGE=pos_events
+      - REDIS_URL=redis://redis:6379
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+      - rabbitmq
+      - redis
+    networks:
+      - pos-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+
+  payment-service:
+    build: 
+      context: ./services/payment-service
+      dockerfile: Dockerfile
+    container_name: pos-payment-service
+    environment:
+      - NODE_ENV=production
+      - PORT=3005
+      - MONGO_URI=mongodb://mongodb:27017/pos_payments
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_EXCHANGE=pos_events
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+      - rabbitmq
+    networks:
+      - pos-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+
+  store-service:
+    build: 
+      context: ./services/store-service
+      dockerfile: Dockerfile
+    container_name: pos-store-service
+    environment:
+      - NODE_ENV=production
+      - PORT=3006
+      - MONGO_URI=mongodb://mongodb:27017/pos_stores
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_EXCHANGE=pos_events
+      - REDIS_URL=redis://redis:6379
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+      - rabbitmq
+      - redis
+    networks:
+      - pos-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+
+  sync-service:
+    build: 
+      context: ./services/sync-service
+      dockerfile: Dockerfile
+    container_name: pos-sync-service
+    environment:
+      - NODE_ENV=production
+      - PORT=3007
+      - MONGO_URI=mongodb://mongodb:27017/pos_sync
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_EXCHANGE=pos_events
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+      - rabbitmq
+    networks:
+      - pos-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+
+  notification-service:
+    build: 
+      context: ./services/notification-service
+      dockerfile: Dockerfile
+    container_name: pos-notification-service
+    environment:
+      - NODE_ENV=production
+      - PORT=3008
+      - MONGO_URI=mongodb://mongodb:27017/pos_notifications
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_EXCHANGE=pos_events
+    env_file:
+      - .env
+    depends_on:
+      - mongodb
+      - rabbitmq
+    networks:
+      - pos-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.3'
+          memory: 256M
+
+  # Infrastructure
+  mongodb:
+    image: mongo:latest
+    container_name: pos-mongodb
+    volumes:
+      - mongo-data:/data/db
+      - ./deployment/docker/mongodb/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - pos-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+
+  redis:
+    image: redis:alpine
+    container_name: pos-redis
+    volumes:
+      - redis-data:/data
+    networks:
+      - pos-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: pos-rabbitmq
+    volumes:
+      - rabbit-data:/var/lib/rabbitmq
+      - ./deployment/docker/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    networks:
+      - pos-network
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+networks:
+  pos-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
+  redis-data:
+  rabbit-data:

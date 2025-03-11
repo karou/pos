@@ -1,0 +1,38 @@
+flowchart TD
+    classDef productClass fill:#f9d77e,stroke:#333,stroke-width:1px
+    classDef variationClass fill:#aed6f1,stroke:#333,stroke-width:1px
+    classDef optionClass fill:#d2b4de,stroke:#333,stroke-width:1px
+    classDef orderClass fill:#a9dfbf,stroke:#333,stroke-width:1px
+
+    %% Main Product Flow
+    PROD[Base Product\nMilk Tea] --> SIZE[Size Selection\nS/M/L]
+    SIZE --> ICE[Ice Level\n0%/30%/50%/70%/100%]
+    ICE --> SUGAR[Sugar Level\n0%/30%/50%/70%/100%]
+    SUGAR --> TOPPINGS[Toppings Selection]
+    
+    %% Topping Options
+    TOPPINGS --> BT[Boba/Tapioca]
+    TOPPINGS --> JY[Jelly]
+    TOPPINGS --> PP[Popping Boba]
+    TOPPINGS --> PD[Pudding]
+    
+    %% Order Flow
+    TOPPINGS --> CART[Add to Cart]
+    CART --> CHECKOUT[Checkout]
+    CHECKOUT --> PAYMENT[Payment]
+    PAYMENT --> ORDER[Order Created]
+    
+    %% Order Processing
+    ORDER --> KITCHEN[Kitchen Display]
+    KITCHEN --> PREP[Preparation]
+    PREP --> COMPLETE[Order Complete]
+    
+    %% Offline Handling
+    PAYMENT -->|Offline Mode| LOCAL[Store Locally]
+    LOCAL -->|When Online| SYNC[Sync with Server]
+    
+    %% Apply Classes
+    class PROD,SIZE productClass
+    class ICE,SUGAR,TOPPINGS variationClass
+    class BT,JY,PP,PD optionClass
+    class CART,CHECKOUT,PAYMENT,ORDER,KITCHEN,PREP,COMPLETE orderClass

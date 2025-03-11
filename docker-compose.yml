@@ -1,0 +1,311 @@
+version: '3.8'
+
+services:
+  # API Gateway
+  api-gateway:
+    build: ./api-gateway
+    container_name: pos-api-gateway
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PORT=3000
+      - AUTH_SERVICE_URL=http://auth-service:3001
+      - PRODUCT_SERVICE_URL=http://product-service:3002
+      - INVENTORY_SERVICE_URL=http://inventory-service:3003
+      - ORDER_SERVICE_URL=http://order-service:3004
+      - PAYMENT_SERVICE_URL=http://payment-service:3005
+      - STORE_SERVICE_URL=http://store-service:3006
+      - SYNC_SERVICE_URL=http://sync-service:3007
+      - NOTIFICATION_SERVICE_URL=http://notification-service:3008
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - auth-service
+      - product-service
+      - inventory-service
+      - order-service
+      - payment-service
+      - store-service
+      - sync-service
+      - notification-service
+      - redis
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  # Frontend Applications
+  pos-terminal:
+    build: ./frontend/pos-terminal
+    container_name: pos-terminal
+    ports:
+      - "3100:80"
+    volumes:
+      - ./frontend/pos-terminal:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - REACT_APP_API_URL=http://localhost:3000/api
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  admin-dashboard:
+    build: ./frontend/admin-dashboard
+    container_name: pos-admin-dashboard
+    ports:
+      - "3200:80"
+    volumes:
+      - ./frontend/admin-dashboard:/app
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
+      - REACT_APP_API_URL=http://localhost:3000/api
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  # Microservices
+  auth-service:
+    build: ./services/auth-service
+    container_name: pos-auth-service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - MONGO_URI=mongodb://mongodb:27017/pos_auth
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_EXCHANGE=pos_events
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=your_jwt_secret_key_here
+      - JWT_EXPIRES_IN=24h
+    volumes:
+      - ./services/auth-service:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+      - rabbitmq
+      - redis
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  product-service:
+    build: ./services/product-service
+    container_name: pos-product-service
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+      - MONGO_URI=mongodb://mongodb:27017/pos_products
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_EXCHANGE=pos_events
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./services/product-service:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+      - rabbitmq
+      - redis
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  inventory-service:
+    build: ./services/inventory-service
+    container_name: pos-inventory-service
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=development
+      - PORT=3003
+      - MONGO_URI=mongodb://mongodb:27017/pos_inventory
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_EXCHANGE=pos_events
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./services/inventory-service:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+      - rabbitmq
+      - redis
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  order-service:
+    build: ./services/order-service
+    container_name: pos-order-service
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+      - MONGO_URI=mongodb://mongodb:27017/pos_orders
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_EXCHANGE=pos_events
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./services/order-service:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+      - rabbitmq
+      - redis
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  payment-service:
+    build: ./services/payment-service
+    container_name: pos-payment-service
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=development
+      - PORT=3005
+      - MONGO_URI=mongodb://mongodb:27017/pos_payments
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_EXCHANGE=pos_events
+    volumes:
+      - ./services/payment-service:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+      - rabbitmq
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  store-service:
+    build: ./services/store-service
+    container_name: pos-store-service
+    ports:
+      - "3006:3006"
+    environment:
+      - NODE_ENV=development
+      - PORT=3006
+      - MONGO_URI=mongodb://mongodb:27017/pos_stores
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_EXCHANGE=pos_events
+      - REDIS_URL=redis://redis:6379
+    volumes:
+      - ./services/store-service:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+      - rabbitmq
+      - redis
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  sync-service:
+    build: ./services/sync-service
+    container_name: pos-sync-service
+    ports:
+      - "3007:3007"
+    environment:
+      - NODE_ENV=development
+      - PORT=3007
+      - MONGO_URI=mongodb://mongodb:27017/pos_sync
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_EXCHANGE=pos_events
+    volumes:
+      - ./services/sync-service:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+      - rabbitmq
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  notification-service:
+    build: ./services/notification-service
+    container_name: pos-notification-service
+    ports:
+      - "3008:3008"
+    environment:
+      - NODE_ENV=development
+      - PORT=3008
+      - MONGO_URI=mongodb://mongodb:27017/pos_notifications
+      - RABBITMQ_URL=amqp://rabbitmq:5672
+      - RABBITMQ_EXCHANGE=pos_events
+      - MAIL_HOST=mailhog
+      - MAIL_PORT=1025
+      - MAIL_USER=
+      - MAIL_PASS=
+    volumes:
+      - ./services/notification-service:/app
+      - /app/node_modules
+    depends_on:
+      - mongodb
+      - rabbitmq
+      - mailhog
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  # Infrastructure
+  mongodb:
+    image: mongo:latest
+    container_name: pos-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+      - ./deployment/docker/mongodb/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    container_name: pos-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: pos-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbit-data:/var/lib/rabbitmq
+      - ./deployment/docker/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  # For development testing (email notifications)
+  mailhog:
+    image: mailhog/mailhog
+    container_name: pos-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+networks:
+  pos-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
+  redis-data:
+  rabbit-data:

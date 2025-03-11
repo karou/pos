@@ -1,0 +1,107 @@
+graph TD
+    %% Client Side
+    CLIENT[User Browser/Device]
+    
+    %% Load Balancer & Ingress
+    subgraph "Ingress Layer"
+        INGRESS[Kubernetes Ingress]
+        LB[Load Balancer]
+        
+        style INGRESS fill:#f5cba7,stroke:#333,stroke-width:1px
+        style LB fill:#f5cba7,stroke:#333,stroke-width:1px
+    end
+    
+    %% Application Containers
+    subgraph "Kubernetes Cluster"
+        subgraph "Frontend Pods"
+            ADMIN_POD[Admin Dashboard Pod]
+            POS_POD[POS Terminal Pod]
+            
+            style ADMIN_POD fill:#f9d77e,stroke:#333,stroke-width:1px
+            style POS_POD fill:#f9d77e,stroke:#333,stroke-width:1px
+        end
+        
+        subgraph "API Gateway"
+            API_POD[API Gateway Pod]
+            
+            style API_POD fill:#85c1e9,stroke:#333,stroke-width:1px
+        end
+        
+        subgraph "Microservice Pods"
+            AUTH_POD[Auth Service Pod]
+            PROD_POD[Product Service Pod]
+            INV_POD[Inventory Service Pod]
+            ORDER_POD[Order Service Pod]
+            PAY_POD[Payment Service Pod]
+            STORE_POD[Store Service Pod]
+            SYNC_POD[Sync Service Pod]
+            NOTIF_POD[Notification Service Pod]
+            
+            style AUTH_POD fill:#aed6f1,stroke:#333,stroke-width:1px
+            style PROD_POD fill:#aed6f1,stroke:#333,stroke-width:1px
+            style INV_POD fill:#aed6f1,stroke:#333,stroke-width:1px
+            style ORDER_POD fill:#aed6f1,stroke:#333,stroke-width:1px
+            style PAY_POD fill:#aed6f1,stroke:#333,stroke-width:1px
+            style STORE_POD fill:#aed6f1,stroke:#333,stroke-width:1px
+            style SYNC_POD fill:#aed6f1,stroke:#333,stroke-width:1px
+            style NOTIF_POD fill:#aed6f1,stroke:#333,stroke-width:1px
+        end
+        
+        subgraph "Infrastructure Pods"
+            MONGO_POD[(MongoDB Pod)]
+            REDIS_POD[(Redis Pod)]
+            RABBIT_POD{RabbitMQ Pod}
+            
+            style MONGO_POD fill:#c39bd3,stroke:#333,stroke-width:1px
+            style REDIS_POD fill:#7dcea0,stroke:#333,stroke-width:1px
+            style RABBIT_POD fill:#f1948a,stroke:#333,stroke-width:1px
+        end
+        
+        subgraph "Persistent Storage"
+            MONGO_PV[(MongoDB PV)]
+            REDIS_PV[(Redis PV)]
+            RABBIT_PV[(RabbitMQ PV)]
+            
+            style MONGO_PV fill:#d6eaf8,stroke:#333,stroke-width:1px
+            style REDIS_PV fill:#d6eaf8,stroke:#333,stroke-width:1px
+            style RABBIT_PV fill:#d6eaf8,stroke:#333,stroke-width:1px
+        end
+    end
+    
+    %% CI/CD
+    subgraph "CI/CD Pipeline"
+        GIT[Git Repository]
+        CI[CI/CD Server]
+        REGISTRY[Docker Registry]
+        
+        style GIT fill:#d5f5e3,stroke:#333,stroke-width:1px
+        style CI fill:#d5f5e3,stroke:#333,stroke-width:1px
+        style REGISTRY fill:#d5f5e3,stroke:#333,stroke-width:1px
+    end
+    
+    %% Connections
+    CLIENT --> INGRESS
+    INGRESS --> LB
+    LB --> ADMIN_POD
+    LB --> POS_POD
+    LB --> API_POD
+    
+    API_POD --> AUTH_POD
+    API_POD --> PROD_POD
+    API_POD --> INV_POD
+    API_POD --> ORDER_POD
+    API_POD --> PAY_POD
+    API_POD --> STORE_POD
+    API_POD --> SYNC_POD
+    
+    AUTH_POD & PROD_POD & INV_POD & ORDER_POD & PAY_POD & STORE_POD & SYNC_POD & NOTIF_POD --> MONGO_POD
+    AUTH_POD & PROD_POD & INV_POD & ORDER_POD & STORE_POD --> REDIS_POD
+    AUTH_POD & PROD_POD & INV_POD & ORDER_POD & PAY_POD & STORE_POD & SYNC_POD & NOTIF_POD --> RABBIT_POD
+    
+    MONGO_POD --> MONGO_PV
+    REDIS_POD --> REDIS_PV
+    RABBIT_POD --> RABBIT_PV
+    
+    GIT --> CI
+    CI --> REGISTRY
+    REGISTRY --> ADMIN_POD & POS_POD & API_POD & AUTH_POD & PROD_POD & INV_POD & ORDER_POD & PAY_POD & STORE_POD & SYNC_POD & NOTIF_POD

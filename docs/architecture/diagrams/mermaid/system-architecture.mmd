@@ -1,0 +1,101 @@
+graph TB
+    %% Client Applications
+    subgraph "Frontend Applications"
+        AD[Admin Dashboard]
+        POS[POS Terminal]
+        style AD fill:#f9d77e,stroke:#333,stroke-width:2px
+        style POS fill:#f9d77e,stroke:#333,stroke-width:2px
+    end
+
+    %% API Gateway
+    subgraph "API Layer"
+        API[API Gateway]
+        style API fill:#85c1e9,stroke:#333,stroke-width:2px
+    end
+
+    %% Microservices
+    subgraph "Microservices"
+        AUTH[Auth Service]
+        PROD[Product Service]
+        INV[Inventory Service]
+        ORDER[Order Service]
+        PAY[Payment Service]
+        STORE[Store Service]
+        SYNC[Sync Service]
+        NOTIF[Notification Service]
+        
+        style AUTH fill:#aed6f1,stroke:#333,stroke-width:1px
+        style PROD fill:#aed6f1,stroke:#333,stroke-width:1px
+        style INV fill:#aed6f1,stroke:#333,stroke-width:1px
+        style ORDER fill:#aed6f1,stroke:#333,stroke-width:1px
+        style PAY fill:#aed6f1,stroke:#333,stroke-width:1px
+        style STORE fill:#aed6f1,stroke:#333,stroke-width:1px
+        style SYNC fill:#aed6f1,stroke:#333,stroke-width:1px
+        style NOTIF fill:#aed6f1,stroke:#333,stroke-width:1px
+    end
+
+    %% Infrastructure
+    subgraph "Infrastructure"
+        MDB[(MongoDB)]
+        RMQ{RabbitMQ}
+        RDS[(Redis)]
+        
+        style MDB fill:#c39bd3,stroke:#333,stroke-width:1px
+        style RMQ fill:#f1948a,stroke:#333,stroke-width:1px
+        style RDS fill:#7dcea0,stroke:#333,stroke-width:1px
+    end
+    
+    %% Offline Storage
+    subgraph "Offline Capability"
+        IDX[(IndexedDB)]
+        SW[Service Worker]
+        
+        style IDX fill:#f8c471,stroke:#333,stroke-width:1px
+        style SW fill:#f8c471,stroke:#333,stroke-width:1px
+    end
+
+    %% Connections - Frontend to API
+    AD -->|HTTP/REST| API
+    POS -->|HTTP/REST| API
+    POS --> SW
+    SW --> IDX
+    
+    %% Connections - API to Services
+    API --> AUTH
+    API --> PROD
+    API --> INV
+    API --> ORDER
+    API --> PAY
+    API --> STORE
+    API --> SYNC
+    
+    %% Service to Message Broker
+    AUTH -->|Publish/Subscribe| RMQ
+    PROD -->|Publish/Subscribe| RMQ
+    INV -->|Publish/Subscribe| RMQ
+    ORDER -->|Publish/Subscribe| RMQ
+    PAY -->|Publish/Subscribe| RMQ
+    STORE -->|Publish/Subscribe| RMQ
+    SYNC -->|Publish/Subscribe| RMQ
+    NOTIF -->|Consume Events| RMQ
+    
+    %% Services to Database
+    AUTH --> MDB
+    PROD --> MDB
+    INV --> MDB
+    ORDER --> MDB
+    PAY --> MDB
+    STORE --> MDB
+    SYNC --> MDB
+    NOTIF --> MDB
+    
+    %% Services to Cache
+    AUTH --> RDS
+    PROD --> RDS
+    INV --> RDS
+    ORDER --> RDS
+    STORE --> RDS
+    
+    %% Sync Flow
+    SYNC --> POS
+    IDX -->|Sync When Online| SYNC

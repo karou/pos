@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # Infrastructure Components Only
+  mongodb:
+    image: mongo:latest
+    container_name: pos-mongodb
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo-data:/data/db
+      - ./deployment/docker/mongodb/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  redis:
+    image: redis:alpine
+    container_name: pos-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: pos-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbit-data:/var/lib/rabbitmq
+      - ./deployment/docker/rabbitmq/definitions.json:/etc/rabbitmq/definitions.json:ro
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+  # For development testing (email notifications)
+  mailhog:
+    image: mailhog/mailhog
+    container_name: pos-mailhog
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+    networks:
+      - pos-network
+    restart: unless-stopped
+
+networks:
+  pos-network:
+    driver: bridge
+
+volumes:
+  mongo-data:
+  redis-data:
+  rabbit-data:

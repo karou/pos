@@ -1,0 +1,196 @@
+# GitLab CI/CD configuration for POS System
+
+stages:
+  - test
+  - build
+  - deploy_staging
+  - deploy_production
+
+variables:
+  DOCKER_REGISTRY: your-registry.com
+  DOCKER_REGISTRY_USER: \
+  DOCKER_REGISTRY_PASSWORD: \
+  KUBERNETES_STAGING: \
+  KUBERNETES_PRODUCTION: \
+
+# Common
+.common_rules: &common_rules
+  rules:
+    - if: \ == "main" || \ == "develop" || \ == "merge_request_event"
+
+# Services job templates
+.node_test: &node_test
+  stage: test
+  image: node:18-alpine
+  <<: *common_rules
+  before_script:
+    - cd \
+    - npm ci
+  script:
+    - npm run lint
+    - npm test
+  cache:
+    key: \-\
+    paths:
+      - \/node_modules/
+
+.docker_build: &docker_build
+  stage: build
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  <<: *common_rules
+  before_script:
+    - docker login -u \ -p \ \
+  script:
+    - docker build -t \/pos-\:\ -t \/pos-\:latest \
+    - docker push \/pos-\:\
+    - docker push \/pos-\:latest
+  only:
+    - main
+    - develop
+
+# API Gateway
+api_gateway_test:
+  <<: *node_test
+  variables:
+    SERVICE_NAME: api-gateway
+    SERVICE_PATH: api-gateway
+
+api_gateway_build:
+  <<: *docker_build
+  variables:
+    SERVICE_NAME: api-gateway
+    SERVICE_PATH: api-gateway
+  needs:
+    - api_gateway_test
+
+# Auth Service
+auth_service_test:
+  <<: *node_test
+  variables:
+    SERVICE_NAME: auth-service
+    SERVICE_PATH: services/auth-service
+
+auth_service_build:
+  <<: *docker_build
+  variables:
+    SERVICE_NAME: auth-service
+    SERVICE_PATH: services/auth-service
+  needs:
+    - auth_service_test
+
+# Product Service
+product_service_test:
+  <<: *node_test
+  variables:
+    SERVICE_NAME: product-service
+    SERVICE_PATH: services/product-service
+
+product_service_build:
+  <<: *docker_build
+  variables:
+    SERVICE_NAME: product-service
+    SERVICE_PATH: services/product-service
+  needs:
+    - product_service_test
+
+# Order Service
+order_service_test:
+  <<: *node_test
+  variables:
+    SERVICE_NAME: order-service
+    SERVICE_PATH: services/order-service
+
+order_service_build:
+  <<: *docker_build
+  variables:
+    SERVICE_NAME: order-service
+    SERVICE_PATH: services/order-service
+  needs:
+    - order_service_test
+
+# Sync Service
+sync_service_test:
+  <<: *node_test
+  variables:
+    SERVICE_NAME: sync-service
+    SERVICE_PATH: services/sync-service
+
+sync_service_build:
+  <<: *docker_build
+  variables:
+    SERVICE_NAME: sync-service
+    SERVICE_PATH: services/sync-service
+  needs:
+    - sync_service_test
+
+# Frontend - POS Terminal
+pos_terminal_test:
+  <<: *node_test
+  variables:
+    SERVICE_NAME: pos-terminal
+    SERVICE_PATH: frontend/pos-terminal
+
+pos_terminal_build:
+  <<: *docker_build
+  variables:
+    SERVICE_NAME: pos-terminal
+    SERVICE_PATH: frontend/pos-terminal
+  needs:
+    - pos_terminal_test
+
+# Frontend - Admin Dashboard
+admin_dashboard_test:
+  <<: *node_test
+  variables:
+    SERVICE_NAME: admin-dashboard
+    SERVICE_PATH: frontend/admin-dashboard
+
+admin_dashboard_build:
+  <<: *docker_build
+  variables:
+    SERVICE_NAME: admin-dashboard
+    SERVICE_PATH: frontend/admin-dashboard
+  needs:
+    - admin_dashboard_test
+
+# Deploy to staging
+deploy_staging:
+  stage: deploy_staging
+  image: bitnami/kubectl:latest
+  <<: *common_rules
+  script:
+    - echo "\" > kubeconfig
+    - export KUBECONFIG=\E:\Projects\Claude\MayuraPOS/kubeconfig
+    - kubectl set image deployment/api-gateway api-gateway=\/pos-api-gateway:\ -n pos-staging
+    - kubectl set image deployment/auth-service auth-service=\/pos-auth-service:\ -n pos-staging
+    - kubectl set image deployment/product-service product-service=\/pos-product-service:\ -n pos-staging
+    - kubectl set image deployment/order-service order-service=\/pos-order-service:\ -n pos-staging
+    - kubectl set image deployment/sync-service sync-service=\/pos-sync-service:\ -n pos-staging
+    - kubectl set image deployment/pos-terminal pos-terminal=\/pos-pos-terminal:\ -n pos-staging
+    - kubectl set image deployment/admin-dashboard admin-dashboard=\/pos-admin-dashboard:\ -n pos-staging
+    - kubectl rollout status deployment/api-gateway -n pos-staging
+    - kubectl rollout status deployment/pos-terminal -n pos-staging
+  only:
+    - develop
+
+# Deploy to production
+deploy_production:
+  stage: deploy_production
+  image: bitnami/kubectl:latest
+  script:
+    - echo "\" > kubeconfig
+    - export KUBECONFIG=\E:\Projects\Claude\MayuraPOS/kubeconfig
+    - kubectl set image deployment/api-gateway api-gateway=\/pos-api-gateway:\ -n pos-production
+    - kubectl set image deployment/auth-service auth-service=\/pos-auth-service:\ -n pos-production
+    - kubectl set image deployment/product-service product-service=\/pos-product-service:\ -n pos-production
+    - kubectl set image deployment/order-service order-service=\/pos-order-service:\ -n pos-production
+    - kubectl set image deployment/sync-service sync-service=\/pos-sync-service:\ -n pos-production
+    - kubectl set image deployment/pos-terminal pos-terminal=\/pos-pos-terminal:\ -n pos-production
+    - kubectl set image deployment/admin-dashboard admin-dashboard=\/pos-admin-dashboard:\ -n pos-production
+    - kubectl rollout status deployment/api-gateway -n pos-production
+    - kubectl rollout status deployment/pos-terminal -n pos-production
+  only:
+    - main
+  when: manual

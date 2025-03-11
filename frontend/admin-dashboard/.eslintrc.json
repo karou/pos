@@ -1,0 +1,18 @@
+{
+    "extends": [
+      "react-app",
+      "react-app/jest"
+    ],
+    "rules": {
+      "no-restricted-globals": ["error", "event", "fdescribe"],
+      "react/jsx-filename-extension": [1, { "extensions": [".js", ".jsx"] }]
+    },
+    "overrides": [
+      {
+        "files": ["service-worker.js", "src/service-worker.js"],
+        "rules": {
+          "no-restricted-globals": "off"
+        }
+      }
+    ]
+  }
