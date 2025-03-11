@@ -1,4 +1,5 @@
 const Product = require('../models/product');
+const Category = require('../models/category');
 const { logger } = require('../utils/logger');
 
 /**
@@ -26,6 +27,22 @@ const productController = {
       });
     }
   },
+
+  getCategories: async (req, res) => {
+    try {
+      // Remove any incorrect populate() call
+      const categories = await Category.find();
+      
+      // If you need to sort them
+      // const categories = await Category.find().sort({ sortOrder: 1, name: 1 });
+      
+      res.json({ success: true, data: categories });
+    } catch (error) {
+      console.error('Error getting categories:', error);
+      res.status(500).json({ success: false, message: error.message });
+    }
+  },
+
   
   /**
    * Get product by ID

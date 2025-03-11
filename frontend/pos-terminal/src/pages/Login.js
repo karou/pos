@@ -27,17 +27,25 @@ const Login = () => {
     setError('');
     
     try {
-      // Validate inputs
-      if (!credentials.username || !credentials.password) {
-        setError('Please enter both username and password');
-        return;
-      }
+      // This is probably being skipped or not actually authenticating
+      const result = await login(credentials);
       
-      await login(credentials);
-      navigate('/');
+      // Add logging to see what's happening
+      console.log('Login result:', result);
+      
+      // Check if login was successful before redirecting
+      if (result && result.status === "success") {
+        navigate('/');
+      } else {
+        setError(result?.message || 'Authentication failed');
+      }
     } catch (err) {
-      setError('Invalid username or password');
       console.error('Login error:', err);
+      if (err.response && err.response.status === 401) {
+        setError('Invalid username or password');
+      } else {
+        setError('Authentication failed. Please try again.');
+      }
     }
   };
   

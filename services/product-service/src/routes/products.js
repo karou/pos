@@ -3,6 +3,9 @@ const productController = require('../controllers/product.controller');
 
 const router = express.Router();
 
+
+// This fixes the "Cast to ObjectId failed for value 'categories'" error
+router.get('/categories', productController.getCategories);
 // Get all products
 router.get('/', productController.getAllProducts);
 

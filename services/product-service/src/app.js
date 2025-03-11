@@ -21,7 +21,19 @@ app.get('/health', (req, res) => {
 // Routes
 app.use('/', productsRoutes);
 
-
+if (!mongoose.models.Category) {
+  const categorySchema = new mongoose.Schema({
+    name: { type: String, required: true },
+    description: { type: String },
+    image: { type: String },
+    isActive: { type: Boolean, default: true },
+    sortOrder: { type: Number, default: 0 },
+    createdAt: { type: Date, default: Date.now },
+    updatedAt: { type: Date, default: Date.now }
+  });
+  
+  mongoose.model('Category', categorySchema);
+}
 
 // Error handling middleware
 app.use((err, req, res, next) => {

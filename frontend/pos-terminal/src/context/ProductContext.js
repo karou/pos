@@ -4,11 +4,13 @@ import { getCachedProducts, getCachedCategories, cacheProducts, cacheCategories 
 import useOfflineSync from '../hooks/useOfflineSync';
 import { useNotification } from './NotificationContext';
 import { products as mockProducts, categories as mockCategories } from '../services/mockApi';
+import { useAuth } from '../context/AuthContext';
 
 // Create product context
 const ProductContext = createContext();
 
 export const ProductProvider = ({ children }) => {
+  const { isAuthenticated } = useAuth();
   const [products, setProducts] = useState([]);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -38,8 +40,10 @@ export const ProductProvider = ({ children }) => {
   
   // Fetch products on component mount
   useEffect(() => {
-    fetchProducts();
-  }, [isOnline]);
+    if (isAuthenticated) {
+        fetchProducts();
+      }
+  }, [isAuthenticated]);
   
   // Automatically retry after rate limit cooldown
   useEffect(() => {
